@@ -1,12 +1,11 @@
 import json
-import logging
-
-from flask import Flask
-from flask import request
-from flask import jsonify
-from flask_restful import Api, reqparse
-from book_type import BookType, BookEncoder
 from datetime import datetime
+
+from flask import Flask, jsonify, request
+from flask_restful import Api, reqparse
+
+import book_logger
+from book_type import BookEncoder, BookType
 
 #         /v1/books/manipulation POST - Add book with no arguments but request payload as json contains fields  (type, title, creation date)
 #         /v1/books/manipulation DELETE - Delete book with arguments (id)
@@ -18,11 +17,12 @@ from datetime import datetime
 
 
 books = []
-app = Flask(__name__)
-api = Api(app)
+logger = book_logger.define_logger()
+books_app = Flask(__name__)
+books_api = Api(books_app)
 
 
-@app.route("/v1/books/latest", methods=['GET'])
+@books_app.route("/v1/books/latest", methods=['GET'])
 def latest():
     logger.info("Method '{}' was called at endpoint: {}".format(request.method, request.path))
     amount = int(request.args.get('amount'))
@@ -31,7 +31,7 @@ def latest():
     return json.dumps(books[:amount], cls=BookEncoder), 200
 
 
-@app.route("/v1/books/info", methods=['GET'])
+@books_app.route("/v1/books/info", methods=['GET'])
 def info():
     logger.info("Method '{}' was called at endpoint: {}".format(request.method, request.path))
     uuid4 = request.args.get('uuid4')
@@ -43,7 +43,7 @@ def info():
         return "Book with id: {} is not found.".format(uuid4), 404
 
 
-@app.route("/v1/books/ids", methods=['GET'])
+@books_app.route("/v1/books/ids", methods=['GET'])
 def ids():
     logger.info("Method '{}' was called at endpoint: {}".format(request.method, request.path))
     title = request.args.get('title')
@@ -55,13 +55,13 @@ def ids():
         , 200
 
 
-@app.route("/v1/books/manipulation", methods=['GET'])
+@books_app.route("/v1/books/manipulation", methods=['GET'])
 def get():
     logger.warning("Method 'GET' is not allowed for endpoint: {}".format(request.path))
     return "No implementation for `GET` method.", 405
 
 
-@app.route("/v1/books/manipulation", methods=['POST'])
+@books_app.route("/v1/books/manipulation", methods=['POST'])
 def post():
     logger.info("Method '{}' was called at endpoint: {}".format(request.method, request.path))
     parser = reqparse.RequestParser()
@@ -90,7 +90,7 @@ def post():
     return "Book with id: {} is created.".format(args["ID"]), 201
 
 
-@app.route("/v1/books/manipulation", methods=['PUT'])
+@books_app.route("/v1/books/manipulation", methods=['PUT'])
 def put():
     logger.info("Method '{}' was called at endpoint: {}".format(request.method, request.path))
     uuid4 = request.args.get('uuid4')
@@ -107,7 +107,7 @@ def put():
         return "Book with id: {} is not found.".format(uuid4), 404
 
 
-@app.route("/v1/books/manipulation", methods=['DELETE'])
+@books_app.route("/v1/books/manipulation", methods=['DELETE'])
 def delete():
     logger.info("Method '{}' was called at endpoint: {}".format(request.method, request.path))
     uuid4 = request.args.get('uuid4')
@@ -118,30 +118,8 @@ def delete():
         return "Book with id: {} is deleted.".format(uuid4), 200
     except StopIteration:
         logger.warning("Book with id: {} is not found.".format(uuid4))
-        return "Book with id: {} is not found.".format(uuid4), 204
-
-
-def define_logger():
-    global logger
-    logger = logging.getLogger("BookManipulationService")
-    logger.setLevel(logging.DEBUG)
-
-    # create console handler and set level to debug
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
-
-    # create formatter
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-    # add formatter to ch
-    ch.setFormatter(formatter)
-
-    # add ch to logger
-    logger.addHandler(ch)
-
-    return logger
+        return "Book with id: {} is not found.".format(uuid4), 404
 
 
 if __name__ == '__main__':
-    define_logger()
-    app.run(debug=True)
+    books_app.run(debug=True)
